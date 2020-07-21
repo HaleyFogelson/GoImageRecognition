@@ -40,7 +40,7 @@ func (a Labels) Equals(other Labels) bool {
 	for i, l := range a {
 		if l.Label != other[i].Label || l.Probability != other[i].Probability {
 			return false
-			log.Printf("not equal \nwant: %s, %f \ngot: %s, %f",l.Label,l.Probability,other[i].Label,other[i].Probability)
+			log.Printf("not equal \nwant: %s, %f \ngot: %s, %f", l.Label, l.Probability, other[i].Label, other[i].Probability)
 		}
 	}
 	return true
@@ -52,14 +52,6 @@ func (a Labels) getLabels() string {
 	}
 	return result
 }
-
-//func convertLabelList(a []Label) Labels{
-//	var result Labels
-//	for _,l :=range a{
-//		result=append(result,l)
-//	}
-//	return result
-//}
 
 // This is the main method
 func main() {
@@ -85,7 +77,7 @@ func main() {
 			log.Fatalf("cannot create tensor from the model %v", err)
 		}
 
-		modelGraph, labels, err := loadModel()
+		modelGraph, labels, err := loadModel(graphFile, labelsFile)
 		if err != nil {
 			log.Fatalf("There was an issue loading the model %v", err)
 		}
@@ -131,9 +123,9 @@ func checkArgs(args []string) bool {
 }
 
 // function that loads a pretrained model
-func loadModel() (*tensorflow.Graph, []string, error) {
+func loadModel(graphFileName string, labelsFileName string) (*tensorflow.Graph, []string, error) {
 	// Load inception model
-	model, err := ioutil.ReadFile(graphFile)
+	model, err := ioutil.ReadFile(graphFileName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -143,7 +135,7 @@ func loadModel() (*tensorflow.Graph, []string, error) {
 	}
 
 	// Load labels
-	labelsFile, err := os.Open(labelsFile)
+	labelsFile, err := os.Open(labelsFileName)
 	if err != nil {
 		return nil, nil, err
 	}

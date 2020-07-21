@@ -14,10 +14,6 @@ func Test_checkUrl(t *testing.T) {
 }
 
 func TestCheckArgs(t *testing.T) {
-	// assert := assert.New(t)
-	// fmt.Printf("%t",checkArgs([]string{"first","https://cdn.pixabay.com/photo/2019/07/30/05/53/dog-4372036__340.jpg"}))
-	// assert.True(checkArgs([]string{"first","https://cdn.pixabay.com/photo/2019/07/30/05/53/dog-4372036__340.jpg"}))
-	// assert.False(checkArgs([]string{"first"}))
 	var tests = []struct {
 		name string
 		args []string
@@ -127,6 +123,47 @@ func TestLabels(t *testing.T) {
 	}
 }
 
+func equalArrays(x []string, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	for i, s := range x {
+		if y[i] != s {
+			return false
+		}
+	}
+	return true
+}
+
+func TestLoadModel(t *testing.T) {
+	var tests = []struct {
+		name           string
+		graphFileName  string
+		labelsFileName string
+		//wantedGraph    *tensorflow.Graph
+		wantedString   []string
+		wantedErr      error
+	}{
+		{"normal graph", graphFile, labelsFile, []string{""}, nil},
+	}
+	for _, tt := range tests {
+		testname := fmt.Sprintf(tt.name)
+		t.Run(testname, func(t *testing.T) {
+			_, ansS, ansE := loadModel(tt.graphFileName, tt.labelsFileName)
+			//if ansG != tt.wantedGraph {
+			//	t.Errorf("did not get the right graph")
+			//}
+			if equalArrays(ansS, tt.wantedString) {
+				t.Errorf("did not get the right string \n wanted: %s \nactual: %s", tt.wantedString, ansS)
+			}
+			if ansE != tt.wantedErr {
+				t.Errorf("did not get the right error \n wanted: %s \nactual: %s", tt.wantedErr, ansE)
+			}
+		})
+	}
+
+}
+
 func TestLabelsHelpers(t *testing.T) {
 	var labels []Label
 	labels = append(labels, Label{"hello", 5})
@@ -185,5 +222,4 @@ func TestLabelsHelpers(t *testing.T) {
 			}
 		})
 	}
-
 }
