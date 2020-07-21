@@ -40,10 +40,26 @@ func (a Labels) Equals(other Labels) bool {
 	for i, l := range a {
 		if l.Label != other[i].Label || l.Probability != other[i].Probability {
 			return false
+			log.Printf("not equal \nwant: %s, %f \ngot: %s, %f",l.Label,l.Probability,other[i].Label,other[i].Probability)
 		}
 	}
 	return true
 }
+func (a Labels) getLabels() string {
+	result := ""
+	for _, label := range a {
+		result = fmt.Sprintf("%s label: %s prob: %f,", result, label.Label, label.Probability)
+	}
+	return result
+}
+
+//func convertLabelList(a []Label) Labels{
+//	var result Labels
+//	for _,l :=range a{
+//		result=append(result,l)
+//	}
+//	return result
+//}
 
 // This is the main method
 func main() {
