@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"io/ioutil"
 	"log"
@@ -56,23 +59,34 @@ func (a Labels) getLabels() string {
 // This is the main method
 func main() {
 	os.Setenv("TF_CPP_MIN_LOG_LEVEL", "2")
-
 	if checkArgs(os.Args) {
-
-		response, e := http.Get(os.Args[1])
-		if e != nil {
-			log.Fatalf("unable to get image from url: %v", e)
+		url := os.Args[1]
+		var image io.ReadCloser
+		var err error
+		if len(os.Args) > 2 && os.Args[2] == "upload" {
+			image, err = os.Open(url)
+			if err != nil {
+				log.Fatalf("The uploaded file can not be opened")
+			}
+			defer image.Close()
+		} else {
+			response, e := http.Get(url)
+			if e != nil {
+				log.Fatalf("unable to get image from url: %v", e)
+			}
+			//writes the image to a file
+			image = response.Body
+			defer response.Body.Close()
 		}
-		defer response.Body.Close()
 
 		//Gets the normalized graph
 		graph, input, outputG, err := getNormalizedGraph()
 		if err != nil {
-			log.Fatalf("unable to get normalized graph %v", e)
+			log.Fatalf("unable to get normalized graph %v", err)
 		}
 
 		// turns the image into a tensor so it can be comapared to by the model
-		tensor, err := imageToTensor(response.Body, tensorflow.NewTensor, runSession, graph, input, outputG)
+		tensor, err := imageToTensor(image, tensorflow.NewTensor, runSession, graph, input, outputG)
 		if err != nil {
 			log.Fatalf("cannot create tensor from the model %v", err)
 		}
@@ -105,6 +119,12 @@ func main() {
 		for _, l := range res {
 			fmt.Printf("label: %s, probability: %.2f%%\n", l.Label, l.Probability*100)
 		}
+		//filePath := "./image.png"
+		//err = DownloadFile(filePath, url)
+		//if err != nil {
+		//	log.Fatalf("could not download the file")
+		//}
+		//printImage(filePath)
 	} else {
 		log.Fatalf("usage: imgrecognition <image_url>")
 	}
@@ -225,4 +245,53 @@ func getNormalizedGraph() (graph *tensorflow.Graph, input, output tensorflow.Out
 	graph, err = s.Finalize()
 
 	return graph, input, output, err
+}
+
+// DownloadFile will download a url to a local file. It's efficient because it will
+// write as it downloads and not load the whole file into memory.
+func DownloadFile(filepath string, url string) error {
+
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func printImage(filepath string) {
+	// Read image from file that already exists
+	existingImageFile, err := os.Open(filepath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer existingImageFile.Close()
+
+	// We only need this because we already read from the file
+	// We have to reset the file pointer back to beginning
+	existingImageFile.Seek(0, 0)
+
+	// Alternatively, since we know it is a png already
+	loadedImage, imageType, err := image.Decode(existingImageFile)
+	// we can call png.Decode() directly
+	if imageType == "png" {
+		loadedImage, err = png.Decode(existingImageFile)
+	} else if imageType == "jpeg" {
+		loadedImage, err = jpeg.Decode(existingImageFile)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(loadedImage)
 }
