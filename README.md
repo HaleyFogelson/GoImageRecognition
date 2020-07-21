@@ -1,24 +1,28 @@
-#Go Image Recignition
+# Go Image Recignition
 
 
-###Project Description
+### Project Description
 This is a program built using go that classifies animals using tensor flow and google's data set for animals. This project is for getting used to using go. Inorder to run this program you must pass in an image. 
 
 
-###How to use the repository
-Clone the project
+### How to use the repository
+1.Clone the project
 ```
-git clone 
+git clone https://github.com/HaleyFogelson/GoImageRecognition.git
 ```
+2. Configure Docker or install the C tensorflow library then the go tensorflow library
 
-
-#Build the docker file
+## Build the docker file
 ```
 docker build --tag src:1.0 .
 ```
 
 
-#Run the file
+## Run the file with a url of an image
 ```
 docker run src:1.0 url_address_of_image
 ```
+
+
+
+
