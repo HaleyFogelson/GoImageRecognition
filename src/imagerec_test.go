@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/tensorflow/tensorflow/tensorflow/go"
+	"github.com/tensorflow/tensorflow/tensorflow/go/op"
 	"log"
 	"net/http"
 	"testing"
@@ -141,8 +142,8 @@ func TestLoadModel(t *testing.T) {
 		graphFileName  string
 		labelsFileName string
 		//wantedGraph    *tensorflow.Graph
-		wantedString   []string
-		wantedErr      error
+		wantedString []string
+		wantedErr    error
 	}{
 		{"normal graph", graphFile, labelsFile, []string{""}, nil},
 	}
@@ -160,6 +161,20 @@ func TestLoadModel(t *testing.T) {
 				t.Errorf("did not get the right error \n wanted: %s \nactual: %s", tt.wantedErr, ansE)
 			}
 		})
+	}
+
+}
+
+func TestGetNormalizedGraph(t *testing.T) {
+	s := op.NewScope()
+	expectedInput := op.Placeholder(s, tensorflow.String)
+	//expectedOutput := tensorflow.Output{}
+	_, input, _, err := getNormalizedGraph()
+	if expectedInput != input {
+		t.Errorf("Expected input: %s \nActual input: %s", expectedInput, input)
+	}
+	if err != nil {
+		t.Errorf("There was an unexpected error from getting the normalized graph")
 	}
 
 }
