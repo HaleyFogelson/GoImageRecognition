@@ -4,9 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"image"
-	"image/jpeg"
-	"image/png"
 	"io"
 	"io/ioutil"
 	"log"
@@ -56,36 +53,19 @@ func (a Labels) getLabels() string {
 	return result
 }
 
-// This is the main method
 func main() {
 	os.Setenv("TF_CPP_MIN_LOG_LEVEL", "2")
 	if checkArgs(os.Args) {
-		url := os.Args[1]
-		var image io.ReadCloser
-		var err error
-		if len(os.Args) > 2 && os.Args[2] == "upload" {
-			image, err = os.Open(url)
-			if err != nil {
-				log.Fatalf("The uploaded file can not be opened")
-			}
-			defer image.Close()
-		} else {
-			response, e := http.Get(url)
-			if e != nil {
-				log.Fatalf("unable to get image from url: %v", e)
-			}
-			//writes the image to a file
-			image = response.Body
-			defer response.Body.Close()
-		}
-
+		image := getImageFromSource(os.Args)
+		defer image.Close()
 		//Gets the normalized graph
 		graph, input, outputG, err := getNormalizedGraph()
 		if err != nil {
 			log.Fatalf("unable to get normalized graph %v", err)
 		}
-
-		// turns the image into a tensor so it can be comapared to by the model
+		// turns the image into a tensor so it can be compared to by the model
+		//here I pass in the runSession function that the imageToTensor func uses so it can be mocked in the tests
+		//without having to run an entire tensorflow function
 		tensor, err := imageToTensor(image, tensorflow.NewTensor, runSession, graph, input, outputG)
 		if err != nil {
 			log.Fatalf("cannot create tensor from the model %v", err)
@@ -102,14 +82,10 @@ func main() {
 			log.Fatalf("There was an error initializing the session: %v", err)
 		}
 
-		output, err := session.Run(
-			map[tensorflow.Output]*tensorflow.Tensor{
-				modelGraph.Operation("input").Output(0): tensor,
-			},
-			[]tensorflow.Output{
-				modelGraph.Operation("output").Output(0),
-			},
-			nil)
+		//runs the session that gives a tensor that represents a guess of a label
+		output, err := runSession(session, tensor, modelGraph.Operation("input").Output(0),
+			modelGraph.Operation("output").Output(0))
+
 		if err != nil {
 			log.Fatalf("could not make a guess: %v", err)
 		}
@@ -119,14 +95,27 @@ func main() {
 		for _, l := range res {
 			fmt.Printf("label: %s, probability: %.2f%%\n", l.Label, l.Probability*100)
 		}
-		//filePath := "./image.png"
-		//err = DownloadFile(filePath, url)
-		//if err != nil {
-		//	log.Fatalf("could not download the file")
-		//}
-		//printImage(filePath)
 	} else {
+		//This means the program arguments passed in were not valid
 		log.Fatalf("usage: imgrecognition <image_url>")
+	}
+}
+
+//gets the image from either the path passed in or the url depending if the command arguments say "upload" after the path
+func getImageFromSource(args []string) io.ReadCloser {
+	url := args[1]
+	if len(args) > 2 && args[2] == "upload" {
+		image, err := os.Open(url)
+		if err != nil {
+			log.Fatalf("The uploaded file can not be opened")
+		}
+		return image
+	} else {
+		response, e := http.Get(url)
+		if e != nil {
+			log.Fatalf("unable to get image from url: %v", e)
+		}
+		return response.Body
 	}
 }
 
@@ -142,7 +131,7 @@ func checkArgs(args []string) bool {
 	return true
 }
 
-// function that loads a pretrained model
+// function that loads a pretrained model and list of labels from files unzipped in the docker
 func loadModel(graphFileName string, labelsFileName string) (*tensorflow.Graph, []string, error) {
 	// Load inception model
 	model, err := ioutil.ReadFile(graphFileName)
@@ -222,8 +211,8 @@ func runSession(session *tensorflow.Session, tensor *tensorflow.Tensor, input te
 	return normalized, err
 }
 
-// Creates a graph to decode, rezise and normalize an image
-//normalizes an image to tensor flow image
+// Creates a graph to decode, resize and normalize an image and normalizes an image to tensor flow image
+//Function from https://dev.to/plutov/image-recognition-in-go-using-tensorflow-k8g
 func getNormalizedGraph() (graph *tensorflow.Graph, input, output tensorflow.Output, err error) {
 	s := op.NewScope()
 	input = op.Placeholder(s, tensorflow.String)
@@ -245,52 +234,4 @@ func getNormalizedGraph() (graph *tensorflow.Graph, input, output tensorflow.Out
 	graph, err = s.Finalize()
 
 	return graph, input, output, err
-}
-
-// DownloadFile will download a url to a local file.
-func DownloadFile(filepath string, url string) error {
-
-	// Get the data
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Create the file
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	return err
-}
-
-func printImage(filepath string) {
-	// Read image from file that already exists
-	existingImageFile, err := os.Open(filepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer existingImageFile.Close()
-
-	// We only need this because we already read from the file
-	// We have to reset the file pointer back to beginning
-	existingImageFile.Seek(0, 0)
-
-	// Alternatively, since we know it is a png already
-	loadedImage, imageType, err := image.Decode(existingImageFile)
-	// we can call png.Decode() directly
-	if imageType == "png" {
-		loadedImage, err = png.Decode(existingImageFile)
-	} else if imageType == "jpeg" {
-		loadedImage, err = jpeg.Decode(existingImageFile)
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(loadedImage)
 }
