@@ -29,3 +29,7 @@ docker run src:1.0 url_address_of_image
 ```
 docker run src:1.0 path_of_image upload
 ```
+
+## Example of it working with an URL
+
+![image](https://user-images.githubusercontent.com/33294092/110341212-1a9c4d00-7ff8-11eb-970f-4ccb86a0b184.png)
